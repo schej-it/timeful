@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"net/mail"
 	"os"
 	"strconv"
 	"strings"
@@ -366,6 +367,10 @@ func sendOtp(c *gin.Context) {
 	}
 
 	email := strings.ToLower(strings.TrimSpace(payload.Email))
+	if address, err := mail.ParseAddress(email); err != nil || address.Address != email {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: errs.InvalidEmail})
+		return
+	}
 
 	// Delete any existing OTP codes for this email
 	db.OtpCodesCollection.DeleteMany(context.Background(), bson.M{"email": email})
