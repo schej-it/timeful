@@ -112,6 +112,12 @@ func createEvent(c *gin.Context) {
 		ownerId = primitive.NilObjectID
 	}
 
+	// Only signed in users can have us email other people, so this can't be used to send spam anonymously
+	if !signedIn && (len(payload.Remindees) > 0 || len(payload.Attendees) > 0) {
+		c.JSON(http.StatusUnauthorized, responses.Error{Error: errs.NotSignedIn})
+		return
+	}
+
 	// Construct event object
 	numResponses := 0
 	event := models.Event{
@@ -336,6 +342,12 @@ func editEvent(c *gin.Context) {
 		updatedRemindees := make([]models.Remindee, 0)
 		added, removed, kept := utils.FindAddedRemovedKept(payload.Remindees, utils.Map(origRemindees, func(r models.Remindee) string { return r.Email }))
 
+		// Ownerless events can be edited by anyone, but only signed in users can have us email other people
+		if !signedIn && len(added) > 0 {
+			c.JSON(http.StatusUnauthorized, responses.Error{Error: errs.NotSignedIn})
+			return
+		}
+
 		// Determine owner name
 		var ownerName string
 		var owner *models.User
@@ -374,6 +386,12 @@ func editEvent(c *gin.Context) {
 	if event.Type == models.GROUP {
 		origAttendees := db.GetAttendees(event.Id.Hex())
 		added, removed, kept := utils.FindAddedRemovedKept(payload.Attendees, utils.Map(origAttendees, func(a models.Attendee) string { return a.Email }))
+
+		// Ownerless groups can be edited by anyone, but only signed in users can have us email other people
+		if !signedIn && len(added) > 0 {
+			c.JSON(http.StatusUnauthorized, responses.Error{Error: errs.NotSignedIn})
+			return
+		}
 
 		// Determine owner name
 		var ownerName string
