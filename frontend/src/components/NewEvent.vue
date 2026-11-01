@@ -663,6 +663,14 @@ export default {
       let duration = this.endTime - this.startTime
       if (duration <= 0) duration += 24
 
+      // Weekly events made before timezones were saved keep the old encoding when edited,
+      // since their responses were saved in it
+      const isLegacyDowEdit =
+        this.edit &&
+        this.event?.type === eventTypes.DOW &&
+        !this.event?.timezone
+      const saveDowTimezone = Boolean(this.timezone.value) && !isLegacyDowEdit
+
       // Get date objects for each selected day
       let dates = []
       let type = ""
@@ -704,14 +712,16 @@ export default {
               this.timezone.value
             )
 
-            if (this.timezone.value) {
+            if (saveDowTimezone) {
               // Store the wall-clock time on the June 2018 reference date. The event's
               // timezone is saved too, so each viewed week can account for DST.
               dates.push(date.toDate())
             } else {
-              // No timezone name to save, so bake in the current DST offset instead
+              // No timezone to save, so bake in the current DST offset instead
               const refOffset = date.utcOffset()
-              const currentOffset = dayjs().utcOffset()
+              const currentOffset = this.timezone.value
+                ? dayjs().tz(this.timezone.value).utcOffset()
+                : dayjs().utcOffset()
               dates.push(
                 date.subtract(currentOffset - refOffset, "minutes").toDate()
               )
@@ -742,7 +752,7 @@ export default {
         timeIncrement: this.timeIncrement,
         creatorPosthogId: this.$posthog?.get_distinct_id(),
       }
-      if (type === eventTypes.DOW && this.timezone.value) {
+      if (type === eventTypes.DOW && saveDowTimezone) {
         payload.timezone = this.timezone.value
       }
 
