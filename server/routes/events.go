@@ -1588,6 +1588,9 @@ func duplicateEvent(c *gin.Context) {
 	event.Name = payload.EventName
 	numResponses := 0
 	event.NumResponses = &numResponses
+	// Reminder emails are scheduled for the original event, so the copy would share (and could cancel) them.
+	// Leave the copy without reminders, the owner can add them when editing it
+	event.Remindees = nil
 	if *payload.CopyAvailability {
 		eventResponses := db.GetEventResponses(eventId)
 		for _, eventResponse := range eventResponses {
