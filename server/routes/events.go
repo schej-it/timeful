@@ -842,6 +842,12 @@ func updateEventResponse(c *gin.Context) {
 		}
 	}
 
+	// Guests are identified by name, so make sure the name can't be used to overwrite a signed in user's response
+	if *payload.Guest && !isValidGuestName(payload.Name) {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: errs.InvalidGuestName})
+		return
+	}
+
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 
 	var userIdString string
@@ -952,7 +958,6 @@ func updateEventResponse(c *gin.Context) {
 		}
 	} else {
 		var response models.SignUpResponse
-		var userIdString string
 		// Populate response differently if guest vs signed in user
 		if *payload.Guest {
 			userIdString = payload.Name
@@ -1101,12 +1106,18 @@ func deleteEventResponse(c *gin.Context) {
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 
 	if *payload.Guest {
+		// Guests are identified by name, so make sure the name can't match a signed in user's response
+		if !isValidGuestName(payload.Name) {
+			c.JSON(http.StatusBadRequest, responses.Error{Error: errs.InvalidGuestName})
+			return
+		}
+
 		if utils.Coalesce(event.IsSignUpForm) {
 			delete(event.SignUpResponses, payload.Name)
 		} else {
-			// Remove response from array
+			// Remove response from array (only guest responses, signed in users' responses are keyed by user id)
 			for i := range eventResponses {
-				if eventResponses[i].Response.Name == payload.Name {
+				if eventResponses[i].Response.Name == payload.Name && !primitive.IsValidObjectID(eventResponses[i].UserId) {
 					db.EventResponsesCollection.DeleteOne(context.Background(), bson.M{
 						"_id": eventResponses[i].Id,
 					})
@@ -1198,6 +1209,12 @@ func renameUser(c *gin.Context) {
 	event := db.GetEventByEitherId(eventId)
 	if event == nil {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+		return
+	}
+
+	// Only guest responses can be renamed, and only to a valid guest name
+	if !isValidGuestName(payload.OldName) || !isValidGuestName(payload.NewName) {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: errs.InvalidGuestName})
 		return
 	}
 
@@ -1854,6 +1871,12 @@ func importEvent(c *gin.Context) {
 	db.UsersCollection.UpdateOne(context.Background(), bson.M{"_id": user.Id}, bson.M{"$inc": bson.M{"numEventsCreated": 1}})
 
 	c.JSON(http.StatusCreated, gin.H{"eventId": newId.Hex(), "shortId": shortId})
+}
+
+// Responses are keyed by user id for signed in users and by name for guests, so a guest name
+// can't be empty or look like a user id, otherwise it could match a signed in user's response
+func isValidGuestName(name string) bool {
+	return strings.TrimSpace(name) != "" && !primitive.IsValidObjectID(name)
 }
 
 // Helper function to find a response by userId
