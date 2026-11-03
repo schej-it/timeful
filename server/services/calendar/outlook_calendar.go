@@ -53,6 +53,23 @@ func (calendar *OutlookCalendar) GetCalendarEvents(calendarId string, timeMin ti
 		calendarId,
 		timeMin.Format(time.RFC3339),
 		timeMax.Format(time.RFC3339))
+
+	// Events are returned a page at a time, so keep following nextLink until there are no more pages
+	calendarEvents := make([]models.CalendarEvent, 0)
+	for url != "" {
+		pageEvents, nextLink, err := calendar.getCalendarEventsPage(calendarId, url)
+		if err != nil {
+			return nil, err
+		}
+		calendarEvents = append(calendarEvents, pageEvents...)
+		url = nextLink
+	}
+
+	return calendarEvents, nil
+}
+
+// Returns the calendar events on the page at the given url, and the url of the next page ("" if this is the last page)
+func (calendar *OutlookCalendar) getCalendarEventsPage(calendarId string, url string) ([]models.CalendarEvent, string, error) {
 	response := services.CallApi(nil, &calendar.OAuth2CalendarAuth, "GET", url, nil)
 	defer response.Body.Close()
 
@@ -68,15 +85,16 @@ func (calendar *OutlookCalendar) GetCalendarEvents(calendarId string, timeMin ti
 			} `json:"end"`
 			ShowAs string `json:"showAs"`
 		} `json:"value"`
-		Error bson.M `json:"error"`
+		NextLink string `json:"@odata.nextLink"`
+		Error    bson.M `json:"error"`
 	}{}
 	err := json.NewDecoder(response.Body).Decode(&responseBody)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if responseBody.Error != nil {
-		return nil, fmt.Errorf("error fetching Outlook events: %v", responseBody.Error)
+		return nil, "", fmt.Errorf("error fetching Outlook events: %v", responseBody.Error)
 	}
 
 	calendarEvents := make([]models.CalendarEvent, 0)
@@ -86,11 +104,11 @@ func (calendar *OutlookCalendar) GetCalendarEvents(calendarId string, timeMin ti
 
 		startTime, err := time.Parse(outlookTimeFormat, event.Start.DateTime)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse start time: %w", err)
+			return nil, "", fmt.Errorf("failed to parse start time: %w", err)
 		}
 		endTime, err := time.Parse(outlookTimeFormat, event.End.DateTime)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse end time: %w", err)
+			return nil, "", fmt.Errorf("failed to parse end time: %w", err)
 		}
 
 		calendarEvents = append(calendarEvents, models.CalendarEvent{
@@ -103,5 +121,5 @@ func (calendar *OutlookCalendar) GetCalendarEvents(calendarId string, timeMin ti
 		})
 	}
 
-	return calendarEvents, nil
+	return calendarEvents, responseBody.NextLink, nil
 }

@@ -227,6 +227,10 @@ func RefreshUserTokenIfNecessary(u *models.User, accounts models.Set[string]) {
 		if calendarAccount, ok := u.CalendarAccounts[calendarAccountKey]; ok {
 			calendarAccount.OAuth2CalendarAuth.AccessToken = res.TokenResponse.AccessToken
 			calendarAccount.OAuth2CalendarAuth.AccessTokenExpireDate = primitive.NewDateTimeFromTime(accessTokenExpireDate)
+			// Microsoft returns a new refresh token on every refresh, and the old one eventually expires
+			if res.TokenResponse.RefreshToken != "" {
+				calendarAccount.OAuth2CalendarAuth.RefreshToken = res.TokenResponse.RefreshToken
+			}
 			u.CalendarAccounts[calendarAccountKey] = calendarAccount
 		}
 	}
