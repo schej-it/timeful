@@ -6,14 +6,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"schej.it/server/logger"
 	"schej.it/server/models"
 )
 
 func CreateFolder(folder *models.Folder) (primitive.ObjectID, error) {
 	result, err := FoldersCollection.InsertOne(context.Background(), folder)
 	if err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 		return primitive.NilObjectID, err
 	}
 	return result.InsertedID.(primitive.ObjectID), nil

@@ -172,6 +172,10 @@ func getEvents(c *gin.Context) {
 		}
 		eventIds = append(eventIds, eventResponse.EventId)
 	}
+	if err := cursor.Err(); err != nil {
+		logger.StdErr.Println(err)
+		panic(err)
+	}
 
 	// Get all the event ids that the user is an attendee of
 	cursor, err = db.AttendeesCollection.Find(context.Background(), bson.M{"email": user.Email, "declined": false})
@@ -190,6 +194,10 @@ func getEvents(c *gin.Context) {
 		} else {
 			eventIds = append(eventIds, attendee.EventId)
 		}
+	}
+	if err := cursor.Err(); err != nil {
+		logger.StdErr.Println(err)
+		panic(err)
 	}
 
 	cursor, err = db.EventsCollection.Find(

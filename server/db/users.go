@@ -8,7 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"schej.it/server/logger"
 	"schej.it/server/models"
 )
 
@@ -30,7 +29,7 @@ func GetUserById(userId string) *models.User {
 	// Decode result
 	var user models.User
 	if err := result.Decode(&user); err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 
 	return &user
@@ -56,7 +55,7 @@ func GetUserByEmail(email string) *models.User {
 	// Decode result
 	var user models.User
 	if err := result.Decode(&user); err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 
 	return &user

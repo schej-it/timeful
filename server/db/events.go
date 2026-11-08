@@ -39,7 +39,7 @@ func GetEventById(eventId string) *models.Event {
 	// Decode result
 	var event models.Event
 	if err := result.Decode(&event); err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 
 	return &event
@@ -66,7 +66,7 @@ func GetEventByShortId(shortEventId string) *models.Event {
 	// Decode result
 	var event models.Event
 	if err := result.Decode(&event); err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 
 	return &event
@@ -92,7 +92,7 @@ func GetEventResponses(eventId string) []models.EventResponse {
 		"eventId": objectId,
 	})
 	if err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 	if result.Err() == mongo.ErrNoDocuments {
 		// Event responses do not exist!
@@ -101,7 +101,7 @@ func GetEventResponses(eventId string) []models.EventResponse {
 
 	var eventResponses []models.EventResponse
 	if err := result.All(context.Background(), &eventResponses); err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 
 	return eventResponses
@@ -118,7 +118,7 @@ func GetAttendees(eventId string) []models.Attendee {
 		"eventId": objectId,
 	})
 	if err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 	if result.Err() == mongo.ErrNoDocuments {
 		// Attendees do not exist!
@@ -127,7 +127,7 @@ func GetAttendees(eventId string) []models.Attendee {
 
 	var attendees []models.Attendee
 	if err := result.All(context.Background(), &attendees); err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 
 	return attendees
@@ -145,7 +145,7 @@ func GetEventsCreatedThisMonth(userId primitive.ObjectID) int {
 		},
 	})
 	if err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 
 	return int(result)
@@ -201,7 +201,7 @@ func UpdateGuestResponseName(eventId string, oldName string, newName string) {
 		},
 	})
 	if err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 }
 
@@ -241,9 +241,13 @@ func GuestNameExists(eventId string, guestName string) bool {
 		"userId":  guestName,
 	})
 
-	if result.Err() == mongo.ErrNoDocuments {
-		// No response found with this userId
-		return false
+	if err := result.Err(); err != nil {
+		if err == mongo.ErrNoDocuments {
+			// No response found with this userId
+			return false
+		}
+		// Any other error (e.g. mongo unreachable) must not be reported as "name taken"
+		panicOnErr(err)
 	}
 
 	// Response found - verify it's a guest (userId is not a valid ObjectID)

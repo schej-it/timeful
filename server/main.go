@@ -21,6 +21,8 @@ import (
 	"github.com/joho/godotenv"
 	"schej.it/server/db"
 	"schej.it/server/logger"
+	"schej.it/server/middleware"
+	"schej.it/server/models"
 	"schej.it/server/routes"
 	"schej.it/server/services/gcloud"
 	"schej.it/server/slackbot"
@@ -82,28 +84,38 @@ func main() {
 		log.Fatal(err)
 	}
 
-	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		var statusColor, methodColor, resetColor string
-		if param.IsOutputColor() {
-			statusColor = param.StatusCodeColor()
-			methodColor = param.MethodColor()
-			resetColor = param.ResetColor()
-		}
+	// Init database. Done before the middleware so the recovery handler gets the configured health timeout.
+	// If mongo is unreachable this logs an error and continues in degraded mode (see db.Init)
+	closeConnection := db.Init()
+	defer closeConnection()
 
-		if param.Latency > time.Minute {
-			param.Latency = param.Latency.Truncate(time.Second)
-		}
-		return fmt.Sprintf("%v |%s %3d %s| %13v | %15s |%s %-7s %s %#v\n%s",
-			param.TimeStamp.Format("2006/01/02 15:04:05"),
-			statusColor, param.StatusCode, resetColor,
-			param.Latency,
-			param.ClientIP,
-			methodColor, param.Method, resetColor,
-			param.Path,
-			param.ErrorMessage,
-		)
+	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		// Health probes run every few seconds and would flood the log
+		SkipPaths: []string{"/api/health"},
+		Formatter: func(param gin.LogFormatterParams) string {
+			var statusColor, methodColor, resetColor string
+			if param.IsOutputColor() {
+				statusColor = param.StatusCodeColor()
+				methodColor = param.MethodColor()
+				resetColor = param.ResetColor()
+			}
+
+			if param.Latency > time.Minute {
+				param.Latency = param.Latency.Truncate(time.Second)
+			}
+			return fmt.Sprintf("%v |%s %3d %s| %13v | %15s |%s %-7s %s %#v\n%s",
+				param.TimeStamp.Format("2006/01/02 15:04:05"),
+				statusColor, param.StatusCode, resetColor,
+				param.Latency,
+				param.ClientIP,
+				methodColor, param.Method, resetColor,
+				param.Path,
+				param.ErrorMessage,
+			)
+		},
 	}))
-	router.Use(gin.Recovery())
+	// Returns 503 instead of an empty 500 when a panic was caused by mongo being unreachable
+	router.Use(middleware.DBAwareRecovery(db.Ping, db.HealthTimeout))
 
 	// Cors
 	corsOrigins := os.Getenv("CORS_ORIGINS")
@@ -119,13 +131,12 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Init database
-	closeConnection := db.Init()
-	defer closeConnection()
-
 	// Init google cloud stuff
 	closeTasks := gcloud.InitTasks()
 	defer closeTasks()
+
+	// Health check, registered before sessions so probes don't need or create a session cookie
+	routes.InitHealth(router)
 
 	// Session
 	store := cookie.NewStore([]byte(os.Getenv("SESSION_SECRET")))
@@ -230,7 +241,7 @@ func noRouteHandler() gin.HandlerFunc {
 		if match := regexp.MustCompile(`\/e\/(\w+)`).FindStringSubmatchIndex(path); match != nil {
 			// /e/:eventId
 			eventId := path[match[2]:match[3]]
-			event := db.GetEventByEitherId(eventId)
+			event := getEventForOgTags(eventId)
 
 			if event != nil {
 				title := fmt.Sprintf("%s - Timeful", event.Name)
@@ -245,6 +256,18 @@ func noRouteHandler() gin.HandlerFunc {
 
 		c.HTML(http.StatusOK, "index.html", params)
 	}
+}
+
+// Looks up the event for the OG meta tags. Returns nil instead of panicking if the lookup fails
+// (e.g. mongo is unreachable), so the SPA is still served
+func getEventForOgTags(eventId string) (event *models.Event) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.StdErr.Printf("Failed to look up event %q for OG tags: %v", eventId, r)
+			event = nil
+		}
+	}()
+	return db.GetEventByEitherId(eventId)
 }
 
 func splitPath(path string) []string {

@@ -8,7 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"schej.it/server/logger"
 	"schej.it/server/models"
 	"schej.it/server/utils"
 )
@@ -30,7 +29,7 @@ func GetFriendRequestById(friendRequestId string) *models.FriendRequest {
 	// Decode result
 	var friendRequest models.FriendRequest
 	if err := result.Decode(&friendRequest); err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 
 	return &friendRequest
@@ -40,13 +39,13 @@ func DeleteFriendRequestById(friendRequestId string) {
 	objectId, err := primitive.ObjectIDFromHex(friendRequestId)
 	if err != nil {
 		// friendRequestId is malformatted
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 	_, err = FriendRequestsCollection.DeleteOne(context.Background(), bson.M{
 		"_id": objectId,
 	})
 	if err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 }
 
@@ -82,13 +81,13 @@ func GetDailyUserLogByDate(date time.Time, timezoneOffset int) *models.DailyUser
 		}
 		result, err := DailyUserLogCollection.InsertOne(context.Background(), log)
 		if err != nil {
-			logger.StdErr.Panicln(err)
+			panicOnErr(err)
 		}
 		log.Id = result.InsertedID.(primitive.ObjectID)
 	} else {
 		// Parse daily user log object
 		if err := result.Decode(&log); err != nil {
-			logger.StdErr.Panicln(err)
+			panicOnErr(err)
 		}
 	}
 
@@ -106,6 +105,6 @@ func UpdateDailyUserLog(user *models.User) {
 	log.UserIds = append(log.UserIds, user.Id)
 	_, err := DailyUserLogCollection.UpdateByID(context.Background(), log.Id, bson.M{"$set": log})
 	if err != nil {
-		logger.StdErr.Panicln(err)
+		panicOnErr(err)
 	}
 }

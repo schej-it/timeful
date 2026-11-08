@@ -49,6 +49,8 @@ services:
         condition: service_healthy
       frontend:
         condition: service_started
+    # /api/health returns 503 while MongoDB is unreachable, which marks the container unhealthy.
+    # Plain compose does not restart a container that is only unhealthy (restart applies on exit)
     healthcheck:
       test:
         ["CMD", "wget", "-q", "--spider", "http://localhost:3002/api/health"]

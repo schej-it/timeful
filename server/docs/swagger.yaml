@@ -192,6 +192,11 @@ definitions:
         items:
           type: integer
         type: array
+      timezone:
+        description: |-
+          IANA timezone the times of a DOW event are in (e.g. "America/Chicago"), used to keep
+          wall-clock times fixed across DST changes. Unset for events created before this existed.
+        type: string
       type:
         $ref: '#/definitions/models.EventType'
       when2meetHref:
@@ -280,7 +285,6 @@ definitions:
       manualAvailability:
         additionalProperties:
           items:
-            format: int64
             type: integer
           type: array
         description: Mapping from the start date of a day to the available times for
@@ -391,6 +395,15 @@ definitions:
   routes.CreateFolderResponse:
     properties:
       id:
+        type: string
+    type: object
+  routes.healthResponse:
+    properties:
+      error:
+        example: service-unavailable
+        type: string
+      status:
+        example: ok
         type: string
     type: object
 host: localhost:3002/api
@@ -764,7 +777,6 @@ paths:
             daysOnly:
               type: boolean
             duration:
-              format: float32
               type: number
             isSignUpForm:
               type: boolean
@@ -863,7 +875,6 @@ paths:
             description:
               type: string
             duration:
-              format: float32
               type: number
             name:
               type: string
@@ -1231,6 +1242,24 @@ paths:
       summary: Import a Timeful event from a remote instance
       tags:
       - events
+  /health:
+    get:
+      description: Pings MongoDB. Returns 200 when it responds, 503 when it does not.
+        Also accepts HEAD.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/routes.healthResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/routes.healthResponse'
+      summary: Reports whether the server can reach MongoDB
+      tags:
+      - health
   /slackbot:
     post:
       consumes:

@@ -23,6 +23,7 @@ const (
 	OtpTooManyAttempts    string = "otp-too-many-attempts"
 	InvalidIdToken        string = "invalid-id-token"
 	TooManyRequests       string = "too-many-requests"
+	ServiceUnavailable    string = "service-unavailable"
 )
 
 type GoogleAPIError struct {

@@ -567,8 +567,7 @@
                                     "type": "boolean"
                                 },
                                 "duration": {
-                                    "type": "number",
-                                    "format": "float32"
+                                    "type": "number"
                                 },
                                 "isSignUpForm": {
                                     "type": "boolean"
@@ -741,8 +740,7 @@
                                     "type": "string"
                                 },
                                 "duration": {
-                                    "type": "number",
-                                    "format": "float32"
+                                    "type": "number"
                                 },
                                 "name": {
                                     "type": "string"
@@ -1273,6 +1271,32 @@
                             "additionalProperties": {
                                 "$ref": "#/definitions/models.Response"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Pings MongoDB. Returns 200 when it responds, 503 when it does not. Also accepts HEAD.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Reports whether the server can reach MongoDB",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/routes.healthResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/routes.healthResponse"
                         }
                     }
                 }
@@ -2384,6 +2408,10 @@
                         "type": "integer"
                     }
                 },
+                "timezone": {
+                    "description": "IANA timezone the times of a DOW event are in (e.g. \"America/Chicago\"), used to keep\nwall-clock times fixed across DST changes. Unset for events created before this existed.",
+                    "type": "string"
+                },
                 "type": {
                     "$ref": "#/definitions/models.EventType"
                 },
@@ -2517,8 +2545,7 @@
                     "additionalProperties": {
                         "type": "array",
                         "items": {
-                            "type": "integer",
-                            "format": "int64"
+                            "type": "integer"
                         }
                     }
                 },
@@ -2674,6 +2701,19 @@
             "properties": {
                 "id": {
                     "type": "string"
+                }
+            }
+        },
+        "routes.healthResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "service-unavailable"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "ok"
                 }
             }
         }
