@@ -95,7 +95,7 @@ export default {
           this.$posthog.capture("Apple Calendar Added")
         })
         .catch((err) => {
-          if (err.error === errors.InvalidCredentials) {
+          if (err.parsed?.error === errors.InvalidCredentials) {
             this.showError("Your Apple ID or app password is incorrect.")
           } else {
             this.showError(
