@@ -118,7 +118,8 @@ func DoesUserExist(email string) (bool, *int) {
 
 	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/api/subscribers", url), nil)
 	q := req.URL.Query()
-	q.Set("query", fmt.Sprintf("subscribers.email='%s'", email))
+	// The query is an SQL expression, so escape quotes to keep the email inside the string literal
+	q.Set("query", fmt.Sprintf("subscribers.email='%s'", strings.ReplaceAll(email, "'", "''")))
 	req.URL.RawQuery = q.Encode()
 	req.SetBasicAuth(username, password)
 	req.Header.Set("Content-Type", "application/json")

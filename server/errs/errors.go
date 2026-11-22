@@ -22,6 +22,7 @@ const (
 	OtpInvalidCode        string = "otp-invalid-code"
 	OtpTooManyAttempts    string = "otp-too-many-attempts"
 	InvalidIdToken        string = "invalid-id-token"
+	InvalidEmail          string = "invalid-email"
 	TooManyRequests       string = "too-many-requests"
 )
 
