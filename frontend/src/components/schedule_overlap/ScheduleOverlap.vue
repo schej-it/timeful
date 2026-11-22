@@ -4333,13 +4333,13 @@ export default {
       // Set event duration to the difference between the max and min hours
       this.event.duration = maxHours - minHours + 1
 
-      // Fix other fields
+      // Update event. The server takes remindees as emails, so convert them without
+      // changing this.event (otherwise saving again would send [undefined])
+      const payload = { ...this.event }
       if (this.event.remindees) {
-        this.event.remindees = this.event.remindees.map((r) => r.email)
+        payload.remindees = this.event.remindees.map((r) => r.email)
       }
-
-      // Update event
-      put(`/events/${this.event._id}`, this.event)
+      put(`/events/${this.event._id}`, payload)
         .then(() => {
           this.state = this.defaultState
         })
@@ -4360,7 +4360,8 @@ export default {
         const localHours = date.getUTCHours()
         if (localHours < minHours) {
           minHours = localHours
-        } else if (localHours > maxHours) {
+        }
+        if (localHours > maxHours) {
           maxHours = localHours
         }
       }
