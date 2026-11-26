@@ -329,7 +329,7 @@ export default {
       } else if (provider === calendarTypes.OUTLOOK) {
         signInOutlook({ state: null, selectAccount: true })
       } else if (provider === calendarTypes.OIDC) {
-        signInOidc({ state })
+        signInOidc({ state: null })
       }
     },
     validateEmail() {
