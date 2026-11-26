@@ -232,6 +232,7 @@ import {
   isPhone,
   post,
   signInGoogle,
+  signInOidc,
   signInOutlook,
 } from "@/utils"
 import { authTypes, calendarTypes, eventTypes } from "@/constants"
@@ -362,6 +363,10 @@ export default {
           signInOutlook({
             state,
             selectAccount: true,
+          })
+        } else if (calendarType === calendarTypes.OIDC) {
+          signInOidc({
+            state,
           })
         }
       }
