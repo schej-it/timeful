@@ -2163,6 +2163,8 @@ export default {
      */
     overlaidAvailability() {
       const overlaidAvailability = []
+      const slotHours = this.timeslotDuration / 60
+
       this.days.forEach((day, d) => {
         overlaidAvailability.push([])
         let curBlockIndex = 0
@@ -2199,12 +2201,12 @@ export default {
             if (curBlockIndex in overlaidAvailability[d]) {
               if (overlaidAvailability[d][curBlockIndex].type === type) {
                 // Increase block length if matching type and curBlockIndex exists
-                overlaidAvailability[d][curBlockIndex].hoursLength += 0.25
+                overlaidAvailability[d][curBlockIndex].hoursLength += slotHours
               } else {
                 // Add a new block because type is different
                 overlaidAvailability[d].push({
                   hoursOffset: time.hoursOffset,
-                  hoursLength: 0.25,
+                  hoursLength: slotHours,
                   type,
                 })
                 curBlockIndex++
@@ -2213,7 +2215,7 @@ export default {
               // Add a new block because block doesn't exist for current index
               overlaidAvailability[d].push({
                 hoursOffset: time.hoursOffset,
-                hoursLength: 0.25,
+                hoursLength: slotHours,
                 type,
               })
             }
